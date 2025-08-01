@@ -22,7 +22,12 @@
  *          success: boolean,
  *          userAgent: string,
  *          size: number,
- *          location: string
+ *          location: string,
+ *          applicationName: string,
+ *          applicationId: string,
+ *          userName: string,
+ *          userId: string,
+ *          apiName: string
  *        }
  *      ]
  *    }
@@ -30,7 +35,7 @@
  * 3. All metrics and graph data will be automatically calculated from the logs
  */
 
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush
 } from 'recharts';
@@ -39,7 +44,8 @@ import {
   Activity, Users, Clock, AlertTriangle, TrendingUp, TrendingDown,
   Globe, Server, Zap, Eye, MoreHorizontal, Settings, Bell, Home,
   FileText, Database, Shield, Box, GitBranch, BarChart3,
-  Moon, Sun, Calendar, ChevronLeft, ChevronUp, Wifi, ExternalLink
+  Moon, Sun, Calendar, ChevronLeft, ChevronUp, Wifi, ExternalLink,
+  User, Code
 } from 'lucide-react';
 
 // Theme Context
@@ -256,7 +262,7 @@ const FilterBar = ({ filters, onFiltersChange, onReset, selectedTimeRange }) => 
           />
           <input
             type="text"
-            placeholder="Search endpoints, IPs, or methods..."
+            placeholder="Search endpoints, IPs, users, or applications..."
             value={searchTerm}
             onChange={handleSearchChange}
             style={inputStyle}
@@ -353,7 +359,7 @@ const FilterBar = ({ filters, onFiltersChange, onReset, selectedTimeRange }) => 
   );
 };
 
-// Updated Chart Section Component with Interactive Histogram
+// Chart Section Component with Interactive Histogram
 const ChartSection = ({ graphData, onTimeRangeSelect }) => {
   const { colors } = useTheme();
   const [brushStartIndex, setBrushStartIndex] = useState(null);
@@ -555,7 +561,7 @@ const ChartSection = ({ graphData, onTimeRangeSelect }) => {
   );
 };
 
-// Log Table Component
+// Log Table Component with simplified styling
 const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
   const { colors } = useTheme();
   const [expandedRows, setExpandedRows] = useState(new Set());
@@ -589,6 +595,11 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
       PATCH: { bg: '#8b5cf6' + '20', text: '#8b5cf6' }
     };
     return colorMap[method] || { bg: colors.textMuted + '20', text: colors.textMuted };
+  };
+
+  const truncateText = (text, maxLength = 15) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   };
 
   return (
@@ -637,7 +648,7 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
             <tr>
               <th 
                 style={{ color: colors.textMuted }}
-                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
               >
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
@@ -646,37 +657,61 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
               </th>
               <th 
                 style={{ color: colors.textMuted }}
-                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
+              >
+                Application
+              </th>
+              <th 
+                style={{ color: colors.textMuted }}
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
+              >
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  User
+                </div>
+              </th>
+              <th 
+                style={{ color: colors.textMuted }}
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
+              >
+                <div className="flex items-center gap-2">
+                  <Code className="w-4 h-4" />
+                  API Name
+                </div>
+              </th>
+              <th 
+                style={{ color: colors.textMuted }}
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
               >
                 Method
               </th>
               <th 
                 style={{ color: colors.textMuted }}
-                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
               >
                 Endpoint
               </th>
               <th 
                 style={{ color: colors.textMuted }}
-                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
               >
                 Status
               </th>
               <th 
                 style={{ color: colors.textMuted }}
-                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
               >
                 Latency
               </th>
               <th 
                 style={{ color: colors.textMuted }}
-                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
               >
                 IP
               </th>
               <th 
                 style={{ color: colors.textMuted }}
-                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider"
               >
                 Actions
               </th>
@@ -695,10 +730,13 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
                     }}
                     className="hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => onLogSelect(log)}
+                    data-application-id={log.applicationId}
+                    data-user-id={log.userId}
                   >
+                    {/* Timestamp */}
                     <td 
                       style={{ color: colors.text }} 
-                      className="px-4 py-3 whitespace-nowrap text-sm font-mono cursor-pointer hover:underline"
+                      className="px-3 py-3 whitespace-nowrap text-sm font-mono cursor-pointer hover:underline"
                       onClick={(e) => {
                         e.stopPropagation();
                         onLogSelect(log);
@@ -706,7 +744,42 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
                     >
                       {new Date(log.timestamp).toLocaleTimeString()}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    
+                    {/* Application Name only - no colors, no ID visible */}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span 
+                        style={{ color: colors.text }} 
+                        className="text-sm"
+                        title={`${log.applicationName} (${log.applicationId})`}
+                      >
+                        {truncateText(log.applicationName, 15)}
+                      </span>
+                    </td>
+                    
+                    {/* User Name only - no ID visible */}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span 
+                        style={{ color: colors.text }} 
+                        className="text-sm"
+                        title={`${log.userName} (${log.userId})`}
+                      >
+                        {truncateText(log.userName, 15)}
+                      </span>
+                    </td>
+                    
+                    {/* API Name */}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span 
+                        style={{ color: colors.text }} 
+                        className="text-sm"
+                        title={log.apiName}
+                      >
+                        {truncateText(log.apiName, 20)}
+                      </span>
+                    </td>
+                    
+                    {/* Method */}
+                    <td className="px-3 py-3 whitespace-nowrap">
                       <span 
                         style={{ 
                           backgroundColor: methodColors.bg,
@@ -717,12 +790,20 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
                         {log.method}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span style={{ color: colors.text }} className="text-sm font-mono">
+                    
+                    {/* Endpoint - show full endpoint */}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span 
+                        style={{ color: colors.text }} 
+                        className="text-sm font-mono"
+                        title={log.endpoint}
+                      >
                         {log.endpoint}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    
+                    {/* Status */}
+                    <td className="px-3 py-3 whitespace-nowrap">
                       <span 
                         style={{ 
                           backgroundColor: statusColors.bg,
@@ -733,7 +814,9 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
                         {log.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    
+                    {/* Latency */}
+                    <td className="px-3 py-3 whitespace-nowrap text-sm">
                       <span 
                         style={{ 
                           color: log.latency > 1000 ? colors.error : 
@@ -744,10 +827,14 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
                         {log.latency}ms
                       </span>
                     </td>
-                    <td style={{ color: colors.textMuted }} className="px-4 py-3 whitespace-nowrap text-sm font-mono">
+                    
+                    {/* IP */}
+                    <td style={{ color: colors.textMuted }} className="px-3 py-3 whitespace-nowrap text-sm font-mono">
                       {log.ip}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    
+                    {/* Actions */}
+                    <td className="px-3 py-3 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={(e) => {
@@ -778,28 +865,62 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
                     </td>
                   </tr>
                   
-                  {/* Expanded Row */}
+                  {/* Expanded Row - show full details */}
                   {expandedRows.has(log.id) && (
                     <tr style={{ backgroundColor: colors.surfaceHover }}>
-                      <td colSpan="7" className="px-4 py-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span style={{ color: colors.text }} className="font-medium">User Agent:</span>
-                            <p style={{ color: colors.textMuted }} className="font-mono text-xs mt-1">
-                              {log.userAgent}
-                            </p>
+                      <td colSpan="10" className="px-4 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 text-sm">
+                          <div className="space-y-3">
+                            <div>
+                              <span style={{ color: colors.text }} className="font-medium block">Application Details:</span>
+                              <p style={{ color: colors.textMuted }} className="mt-1">
+                                <span className="font-semibold">{log.applicationName}</span>
+                              </p>
+                              <p style={{ color: colors.textMuted }} className="text-xs font-mono">
+                                ID: {log.applicationId}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <span style={{ color: colors.text }} className="font-medium">Response Size:</span>
-                            <p style={{ color: colors.textMuted }} className="mt-1">
-                              {(log.size / 1024).toFixed(1)} KB
-                            </p>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <span style={{ color: colors.text }} className="font-medium block">User Details:</span>
+                              <p style={{ color: colors.textMuted }} className="mt-1">
+                                <span className="font-semibold">{log.userName}</span>
+                              </p>
+                              <p style={{ color: colors.textMuted }} className="text-xs font-mono">
+                                ID: {log.userId}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <span style={{ color: colors.text }} className="font-medium">Location:</span>
-                            <p style={{ color: colors.textMuted }} className="mt-1">
-                              {log.location}
-                            </p>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <span style={{ color: colors.text }} className="font-medium block">Request Details:</span>
+                              <p style={{ color: colors.textMuted }} className="mt-1">
+                                <span className="font-semibold">{log.apiName}</span>
+                              </p>
+                              <p style={{ color: colors.textMuted }} className="text-xs font-mono break-all">
+                                {log.endpoint}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <span style={{ color: colors.text }} className="font-medium block">Additional Info:</span>
+                              <div className="space-y-1 mt-1">
+                                <p style={{ color: colors.textMuted }} className="text-xs">
+                                  <span className="font-medium">Size:</span> {(log.size / 1024).toFixed(1)} KB
+                                </p>
+                                <p style={{ color: colors.textMuted }} className="text-xs">
+                                  <span className="font-medium">Location:</span> {log.location}
+                                </p>
+                                <p style={{ color: colors.textMuted }} className="text-xs break-all">
+                                  <span className="font-medium">User Agent:</span> {log.userAgent}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -815,14 +936,31 @@ const LogTable = ({ logs, onLogSelect, isRealTime, onRefresh }) => {
   );
 };
 
-// Inspector Panel Component
+// Enhanced Inspector Panel as Right Sheet Overlay Component
 const InspectorPanel = ({ log, onClose }) => {
   const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState('formatted');
+  const [jsonSearchTerm, setJsonSearchTerm] = useState('');
+  const [isVisible, setIsVisible] = useState(false);
   
+  // Trigger animation when component mounts
+  useEffect(() => {
+    if (log) {
+      setIsVisible(true);
+    }
+  }, [log]);
+
+  // Handle close with animation
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 300); // Wait for animation to complete
+  };
+
   if (!log) return null;
 
-  // Generate comprehensive log details
+  // Generate comprehensive log details including new fields
   const logDetails = {
     requestId: log.id || 'bcac97fe-f557-42ab-ac3e-6c28a9755223',
     traceId: '023f76a2-e5e7-40bb-9a59-055d42a0a401',
@@ -840,6 +978,12 @@ const InspectorPanel = ({ log, onClose }) => {
     retryCount: 0,
     threadCount: 0,
     policyName: 'ANALYTICS_POLICY',
+    // New fields
+    applicationName: log.applicationName,
+    applicationId: log.applicationId,
+    userName: log.userName,
+    userId: log.userId,
+    apiName: log.apiName,
     endpoint: log.endpoint,
     fullUrl: `/send/sms/otp/api?msg=Dear%20Meeting%20ID%20Thanks%20for%20your%20Interest%20in%20availing%20loan%20from%20Vistaer%20Finance.%20426`,
     timestamp: log.timestamp,
@@ -850,7 +994,7 @@ const InspectorPanel = ({ log, onClose }) => {
     method: log.method,
     clientIp: log.ip,
     requestSize: '5af12861-620e-4elc-a306-16701c6a6865',
-    responseSize: null,
+    responseSize: log.size,
     userAgent: log.userAgent,
     sessionId: 'f80eb970-77fe-4db5-99be-78f03f01013',
     responseBody: null,
@@ -859,7 +1003,9 @@ const InspectorPanel = ({ log, onClose }) => {
     token: 'UopRtJcB6UkRRT1SaAVh',
     reference: '3fdfe3d0-32cc-469c-ad59-cd13f28a2de2',
     priority: 952,
-    dedbc869: 'eb78-475d-961d-4b4539f9faf'
+    dedbc869: 'eb78-475d-961d-4b4539f9faf',
+    currentDateTime: '2025-07-29 12:35:15',
+    currentUser: 'rohannaam221b'
   };
 
   const formatValue = (value) => {
@@ -883,126 +1029,244 @@ const InspectorPanel = ({ log, onClose }) => {
     return <span style={{ color: colors.text }} className="break-all">{value}</span>;
   };
 
+  // Enhanced JSON view with search and highlighting
+  const jsonString = JSON.stringify(logDetails, null, 2);
+  
+  const filteredJsonEntries = useMemo(() => {
+    if (!jsonSearchTerm) return Object.entries(logDetails);
+    
+    const searchLower = jsonSearchTerm.toLowerCase();
+    return Object.entries(logDetails).filter(([key, value]) => {
+      const keyMatch = key.toLowerCase().includes(searchLower);
+      const valueMatch = String(value).toLowerCase().includes(searchLower);
+      return keyMatch || valueMatch;
+    });
+  }, [logDetails, jsonSearchTerm]);
+
+  const highlightText = (text, searchTerm) => {
+    if (!searchTerm) return text;
+    
+    const regex = new RegExp(`(${searchTerm})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <span key={index} style={{ backgroundColor: colors.warning + '40', color: colors.text, fontWeight: 'bold' }}>
+          {part}
+        </span>
+      ) : part
+    );
+  };
+
   const renderFormattedView = () => (
     <div className="space-y-1">
-      {Object.entries(logDetails).map(([key, value]) => (
+      {filteredJsonEntries.map(([key, value]) => (
         <div 
           key={key}
           style={{ backgroundColor: colors.surfaceHover }}
           className="px-3 py-2 text-sm"
         >
           <div className="font-mono">
-            {formatValue(value)}
+            <span style={{ color: colors.primary, fontWeight: 'bold' }}>
+              {highlightText(key, jsonSearchTerm)}:
+            </span>{' '}
+            {typeof value === 'string' ? (
+              highlightText(String(value), jsonSearchTerm)
+            ) : (
+              formatValue(value)
+            )}
           </div>
         </div>
       ))}
     </div>
   );
 
-  const renderJsonView = () => (
-    <div 
-      style={{ 
-        backgroundColor: colors.surfaceHover,
-        color: colors.text 
-      }}
-      className="p-4 rounded-lg"
-    >
-      <pre className="text-sm font-mono whitespace-pre-wrap overflow-auto">
-        {JSON.stringify(logDetails, null, 2)}
-      </pre>
-    </div>
-  );
+  const renderJsonView = () => {
+    let displayJson = jsonString;
+    
+    // If search term exists, filter and highlight
+    if (jsonSearchTerm) {
+      const filteredObject = Object.fromEntries(filteredJsonEntries);
+      displayJson = JSON.stringify(filteredObject, null, 2);
+    }
+    
+    return (
+      <div 
+        style={{ 
+          backgroundColor: colors.surfaceHover,
+          color: colors.text 
+        }}
+        className="p-4 rounded-lg"
+      >
+        <pre className="text-sm font-mono whitespace-pre-wrap overflow-auto">
+          {jsonSearchTerm ? (
+            <div dangerouslySetInnerHTML={{
+              __html: displayJson.replace(
+                new RegExp(`(${jsonSearchTerm})`, 'gi'),
+                `<span style="background-color: ${colors.warning}40; font-weight: bold;">$1</span>`
+              )
+            }} />
+          ) : (
+            displayJson
+          )}
+        </pre>
+      </div>
+    );
+  };
 
   return (
-    <div 
-      style={{ 
-        backgroundColor: colors.cardBg,
-        borderColor: colors.border 
-      }}
-      className="w-96 border-l overflow-hidden flex flex-col"
-    >
-      {/* Header */}
+    <>
+      {/* Overlay Background */}
       <div 
-        style={{ borderColor: colors.border }}
-        className="flex items-center justify-between p-4 border-b"
-      >
-        <h3 style={{ color: '#dc2626' }} className="text-lg font-semibold">
-          Log Details
-        </h3>
-        <div className="flex items-center gap-2">
-          <button 
-            style={{ color: colors.textMuted }}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
-            title="Download"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-          <button 
-            style={{ color: colors.textMuted }}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
-            title="Copy"
-          >
-            📋
-          </button>
-          <button 
-            style={{ color: colors.textMuted }}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
-            title="Next"
-          >
-            ⬇ Next
-          </button>
-          <button
-            onClick={onClose}
-            style={{ color: colors.textMuted }}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs */}
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+          isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+        onClick={handleClose}
+      />
+      
+      {/* Right Sheet Panel */}
       <div 
-        style={{ borderColor: colors.border }}
-        className="flex border-b"
+        className={`fixed top-0 right-0 h-full z-50 transition-transform duration-300 ease-in-out ${
+          isVisible ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        style={{ 
+          width: '500px',
+          maxWidth: '90vw'
+        }}
       >
-        <button
-          onClick={() => setActiveTab('formatted')}
-          style={{ 
-            borderColor: activeTab === 'formatted' ? '#dc2626' : 'transparent',
-            color: activeTab === 'formatted' ? '#dc2626' : colors.textMuted
-          }}
-          className="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
-        >
-          Formatted
-        </button>
-        <button
-          onClick={() => setActiveTab('json')}
-          style={{ 
-            borderColor: activeTab === 'json' ? '#dc2626' : 'transparent',
-            color: activeTab === 'json' ? '#dc2626' : colors.textMuted
-          }}
-          className="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
-        >
-          JSON
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
         <div 
-          style={{ backgroundColor: colors.surfaceHover }}
-          className="px-4 py-2"
+          style={{ 
+            backgroundColor: colors.cardBg,
+            borderColor: colors.border 
+          }}
+          className="w-full h-full border-l shadow-2xl flex flex-col"
         >
-          <span style={{ color: colors.textMuted }} className="text-sm font-medium">
-            Value
-          </span>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {activeTab === 'formatted' ? renderFormattedView() : renderJsonView()}
+          {/* Header */}
+          <div 
+            style={{ borderColor: colors.border }}
+            className="flex items-center justify-between p-4 border-b shrink-0"
+          >
+            <h3 style={{ color: '#dc2626' }} className="text-lg font-semibold">
+              Log Details
+            </h3>
+            <div className="flex items-center gap-2">
+              <button 
+                style={{ color: colors.textMuted }}
+                className="p-2 hover:bg-gray-100 rounded transition-colors"
+                title="Download"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+              <button 
+                style={{ color: colors.textMuted }}
+                className="p-2 hover:bg-gray-100 rounded transition-colors"
+                title="Copy"
+              >
+                📋
+              </button>
+              <button 
+                style={{ color: colors.textMuted }}
+                className="p-2 hover:bg-gray-100 rounded transition-colors"
+                title="Next"
+              >
+                ⬇ Next
+              </button>
+              <button
+                onClick={handleClose}
+                style={{ color: colors.textMuted }}
+                className="p-2 hover:bg-gray-100 rounded transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div 
+            style={{ borderColor: colors.border }}
+            className="flex border-b shrink-0"
+          >
+            <button
+              onClick={() => setActiveTab('formatted')}
+              style={{ 
+                borderColor: activeTab === 'formatted' ? '#dc2626' : 'transparent',
+                color: activeTab === 'formatted' ? '#dc2626' : colors.textMuted
+              }}
+              className="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+            >
+              Formatted
+            </button>
+            <button
+              onClick={() => setActiveTab('json')}
+              style={{ 
+                borderColor: activeTab === 'json' ? '#dc2626' : 'transparent',
+                color: activeTab === 'json' ? '#dc2626' : colors.textMuted
+              }}
+              className="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+            >
+              JSON
+            </button>
+          </div>
+
+          {/* Search Bar for JSON tab */}
+          {activeTab === 'json' && (
+            <div 
+              style={{ borderColor: colors.border }}
+              className="p-3 border-b shrink-0"
+            >
+              <div className="relative">
+                <Search 
+                  style={{ color: colors.textMuted }}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" 
+                />
+                <input
+                  type="text"
+                  placeholder="Search in JSON..."
+                  value={jsonSearchTerm}
+                  onChange={(e) => setJsonSearchTerm(e.target.value)}
+                  style={{
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                  className="w-full pl-10 pr-4 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                />
+                {jsonSearchTerm && (
+                  <button
+                    onClick={() => setJsonSearchTerm('')}
+                    style={{ color: colors.textMuted }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 hover:text-red-500"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {jsonSearchTerm && (
+                <p style={{ color: colors.textMuted }} className="text-xs mt-2">
+                  Found {filteredJsonEntries.length} matching field(s)
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <div 
+              style={{ backgroundColor: colors.surfaceHover }}
+              className="px-4 py-2 shrink-0"
+            >
+              <span style={{ color: colors.textMuted }} className="text-sm font-medium">
+                Value
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {activeTab === 'formatted' ? renderFormattedView() : renderJsonView()}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -1094,14 +1358,39 @@ const Logsv2 = () => {
     }
   };
 
-  // Single API call to fetch all data
+  // Handle escape key to close overlay
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && selectedLog) {
+        setSelectedLog(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [selectedLog]);
+
+  // Prevent body scroll when overlay is open
+  useEffect(() => {
+    if (selectedLog) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedLog]);
+
+  // Updated API call to fetch all data with new fields
   const fetchApiLogs = useCallback(async () => {
     try {
       // TODO: Replace with your actual API endpoint
       // const response = await fetch('/api/logs');
       // const apiData = await response.json();
       
-      // For now, using mock data - replace this with your API call
+      // Updated mock data with new fields
       const apiData = {
         logs: Array.from({ length: 50 }, (_, i) => {
           const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
@@ -1109,10 +1398,44 @@ const Logsv2 = () => {
           const statuses = [200, 201, 400, 401, 403, 404, 500, 503];
           const ips = ['192.168.1.10', '10.0.0.15', '172.16.0.5', '203.0.113.42', '198.51.100.17'];
           
+          // New mock data arrays
+          const applications = [
+            { name: 'Mobile App', id: 'mobile-app-001' },
+            { name: 'Web Portal', id: 'web-portal-002' },
+            { name: 'Admin Dashboard', id: 'admin-dash-003' },
+            { name: 'Payment Gateway', id: 'payment-gw-004' },
+            { name: 'Analytics Service', id: 'analytics-svc-005' },
+            { name: 'API Gateway', id: 'api-gateway-006' }
+          ];
+          
+          const users = [
+            { name: 'John Doe', id: 'user_12345' },
+            { name: 'Jane Smith', id: 'user_67890' },
+            { name: 'Admin User', id: 'admin_001' },
+            { name: 'Service Account', id: 'svc_12345' },
+            { name: 'Bob Johnson', id: 'user_54321' },
+            { name: 'Alice Brown', id: 'user_98765' },
+            { name: 'System User', id: 'sys_001' }
+          ];
+          
+          const apiNames = [
+            'User Management API',
+            'Authentication Service',
+            'Data Retrieval API',
+            'File Upload Service',
+            'Payment Processing API',
+            'Search & Analytics API',
+            'Notification Service',
+            'Reporting API'
+          ];
+          
           const method = methods[Math.floor(Math.random() * methods.length)];
           const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
           const status = statuses[Math.floor(Math.random() * statuses.length)];
           const ip = ips[Math.floor(Math.random() * ips.length)];
+          const app = applications[Math.floor(Math.random() * applications.length)];
+          const user = users[Math.floor(Math.random() * users.length)];
+          const apiName = apiNames[Math.floor(Math.random() * apiNames.length)];
           
           // Generate timestamps for the last 24 hours
           const now = new Date();
@@ -1130,7 +1453,13 @@ const Logsv2 = () => {
             success: status < 400,
             userAgent: 'Mozilla/5.0 (compatible; API Client)',
             size: Math.floor(Math.random() * 50000) + 1000,
-            location: ['US-West', 'EU-Central', 'AP-Southeast'][Math.floor(Math.random() * 3)]
+            location: ['US-West', 'EU-Central', 'AP-Southeast'][Math.floor(Math.random() * 3)],
+            // New fields
+            applicationName: app.name,
+            applicationId: app.id,
+            userName: user.name,
+            userId: user.id,
+            apiName: apiName
           };
         })
       };
@@ -1230,11 +1559,20 @@ const Logsv2 = () => {
     return () => clearInterval(interval);
   }, [isRealTime, fetchApiLogs, calculateMetrics, generateGraphData]);
 
-  // Filter logs based on all criteria including time range
+  // Enhanced filter logic to include new fields
   const filteredLogs = logs.filter(log => {
-    // Search filter
-    if (filters.search && !log.endpoint.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false;
+    // Enhanced search filter to include new fields
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      if (
+        !log.endpoint.toLowerCase().includes(searchTerm) &&
+        !log.applicationName.toLowerCase().includes(searchTerm) &&
+        !log.userName.toLowerCase().includes(searchTerm) &&
+        !log.apiName.toLowerCase().includes(searchTerm) &&
+        !log.ip.toLowerCase().includes(searchTerm)
+      ) {
+        return false;
+      }
     }
     
     // Method filter
@@ -1253,154 +1591,157 @@ const Logsv2 = () => {
       const logHour = new Date(log.timestamp).getHours();
       const logTimeKey = `${String(logHour).padStart(2, '0')}:00`;
       
-      // Convert time strings to numbers for comparison
-      const startHour = parseInt(selectedTimeRange.startTime.split(':')[0]);
-      const endHour = parseInt(selectedTimeRange.endTime.split(':')[0]);
-      const currentHour = parseInt(logTimeKey.split(':')[0]);
+            // Convert time strings to numbers for comparison
+            const startHour = parseInt(selectedTimeRange.startTime.split(':')[0]);
+            const endHour = parseInt(selectedTimeRange.endTime.split(':')[0]);
+            const currentHour = parseInt(logTimeKey.split(':')[0]);
+            
+            if (currentHour < startHour || currentHour > endHour) {
+              return false;
+            }
+          }
+          
+          return true;
+        });
       
-      if (currentHour < startHour || currentHour > endHour) {
-        return false;
-      }
-    }
-    
-    return true;
-  });
-
-  const resetFilters = () => {
-    setFilters({
-      search: '',
-      method: 'all',
-      status: 'all',
-      timeRange: '1h'
-    });
-    setSelectedTimeRange(null);
-  };
-
-  // Manual refresh function
-  const handleRefresh = async () => {
-    const data = await fetchApiLogs();
-    const sortedLogs = data.logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    setLogs(sortedLogs);
-    setMetrics(calculateMetrics(sortedLogs));
-    setGraphData(generateGraphData(sortedLogs));
-  };
-
-  return (
-    <div style={{ backgroundColor: colors.background, minHeight: '100vh' }}>
-      {/* Header */}
-      <div 
-        style={{ 
-          backgroundColor: colors.headerBg,
-          borderColor: colors.border 
-        }}
-        className="border-b px-6 py-4"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 style={{ color: colors.text }} className="text-xl font-semibold">
-              API Access Logs
-            </h1>
-            {isRealTime && (
-              <div 
-                style={{ 
-                  backgroundColor: colors.success + '20',
-                  color: colors.success 
-                }}
-                className="flex items-center gap-2 px-3 py-1 rounded-full text-sm"
-              >
-                <div 
-                  style={{ backgroundColor: colors.success }}
-                  className="w-2 h-2 rounded-full animate-pulse" 
-                />
-                Live
+        const resetFilters = () => {
+          setFilters({
+            search: '',
+            method: 'all',
+            status: 'all',
+            timeRange: '1h'
+          });
+          setSelectedTimeRange(null);
+        };
+      
+        // Manual refresh function
+        const handleRefresh = async () => {
+          const data = await fetchApiLogs();
+          const sortedLogs = data.logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          
+          setLogs(sortedLogs);
+          setMetrics(calculateMetrics(sortedLogs));
+          setGraphData(generateGraphData(sortedLogs));
+        };
+      
+        return (
+          <div style={{ backgroundColor: colors.background, minHeight: '100vh' }}>
+            {/* Header */}
+            <div 
+              style={{ 
+                backgroundColor: colors.headerBg,
+                borderColor: colors.border 
+              }}
+              className="border-b px-6 py-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h1 style={{ color: colors.text }} className="text-xl font-semibold">
+                    API Access Logs
+                  </h1>
+                  {isRealTime && (
+                    <div 
+                      style={{ 
+                        backgroundColor: colors.success + '20',
+                        color: colors.success 
+                      }}
+                      className="flex items-center gap-2 px-3 py-1 rounded-full text-sm"
+                    >
+                      <div 
+                        style={{ backgroundColor: colors.success }}
+                        className="w-2 h-2 rounded-full animate-pulse" 
+                      />
+                      Live
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsRealTime(!isRealTime)}
+                    style={{ 
+                      backgroundColor: isRealTime ? colors.primary : colors.surfaceHover,
+                      color: isRealTime ? 'white' : colors.text
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all hover:opacity-90"
+                  >
+                    {isRealTime ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    {isRealTime ? 'Pause' : 'Start'} Live
+                  </button>
+                  
+                  <button
+                    onClick={toggleTheme}
+                    style={{ 
+                      backgroundColor: colors.surfaceHover,
+                      color: colors.text 
+                    }}
+                    className="p-2 rounded-lg hover:opacity-80 transition-opacity"
+                  >
+                    {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                  </button>
+                  
+                  <button 
+                    style={{ 
+                      backgroundColor: colors.surfaceHover,
+                      color: colors.text 
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg hover:opacity-80 transition-opacity"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export
+                  </button>
+                </div>
               </div>
+            </div>
+      
+            <div className="flex">
+              <Sidebar />
+              
+              {/* Main Content */}
+              <div className="flex-1">
+                <div className="p-6 space-y-6">
+                  <SummaryCards metrics={metrics} isRealTime={isRealTime} />
+                  
+                  <FilterBar 
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    onReset={resetFilters}
+                    selectedTimeRange={selectedTimeRange}
+                  />
+                  
+                  <ChartSection 
+                    graphData={graphData} 
+                    onTimeRangeSelect={handleTimeRangeSelect}
+                  />
+                  
+                  <LogTable 
+                    logs={filteredLogs}
+                    onLogSelect={setSelectedLog}
+                    isRealTime={isRealTime}
+                    onRefresh={handleRefresh}
+                  />
+                </div>
+              </div>
+            </div>
+      
+            {/* Right Sheet Overlay Inspector Panel */}
+            {selectedLog && (
+              <InspectorPanel 
+                log={selectedLog}
+                onClose={() => setSelectedLog(null)}
+              />
             )}
           </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsRealTime(!isRealTime)}
-              style={{ 
-                backgroundColor: isRealTime ? colors.primary : colors.surfaceHover,
-                color: isRealTime ? 'white' : colors.text
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all hover:opacity-90"
-            >
-              {isRealTime ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {isRealTime ? 'Pause' : 'Start'} Live
-            </button>
-            
-            <button
-              onClick={toggleTheme}
-              style={{ 
-                backgroundColor: colors.surfaceHover,
-                color: colors.text 
-              }}
-              className="p-2 rounded-lg hover:opacity-80 transition-opacity"
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            
-            <button 
-              style={{ 
-                backgroundColor: colors.surfaceHover,
-                color: colors.text 
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg hover:opacity-80 transition-opacity"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex">
-        <Sidebar />
-        
-        {/* Main Content */}
-        <div className="flex-1">
-          <div className="p-6 space-y-6">
-            <SummaryCards metrics={metrics} isRealTime={isRealTime} />
-            
-            <FilterBar 
-              filters={filters}
-              onFiltersChange={setFilters}
-              onReset={resetFilters}
-              selectedTimeRange={selectedTimeRange}
-            />
-            
-            <ChartSection 
-              graphData={graphData} 
-              onTimeRangeSelect={handleTimeRangeSelect}
-            />
-            
-            <LogTable 
-              logs={filteredLogs}
-              onLogSelect={setSelectedLog}
-              isRealTime={isRealTime}
-              onRefresh={handleRefresh}
-            />
-          </div>
-        </div>
-
-        <InspectorPanel 
-          log={selectedLog}
-          onClose={() => setSelectedLog(null)}
-        />
-      </div>
-    </div>
-  );
-};
-
-// App wrapper with Theme Provider
-const App = () => {
-  return (
-    <ThemeProvider>
-      <Logsv2 />
-    </ThemeProvider>
-  );
-};
-
-export default App;
+        );
+      };
+      
+      // App wrapper with Theme Provider
+      const App = () => {
+        return (
+          <ThemeProvider>
+            <Logsv2 />
+          </ThemeProvider>
+        );
+      };
+      
+      export default App;
